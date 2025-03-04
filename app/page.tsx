@@ -1,101 +1,131 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { fetchPopularMovies, fetchMovieGenres } from '../lib/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorDisplay from '../components/ErrorDisplay';
+import { Movie, Genre } from '../types';
+
+// Lazy load components
+const MovieList = dynamic(() => import('../components/MovieList'), {
+  loading: () => <LoadingSpinner />,
+});
+
+const CategorySelector = dynamic(() => import('../components/CategorySelector'), {
+  loading: () => <LoadingSpinner />,
+});
+
+const FilterBar = dynamic(() => import('../components/FilterBar'), {
+  loading: () => <LoadingSpinner />,
+});
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<'popularity' | 'title' | 'release_date'>('popularity');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [moviesData, genresData] = await Promise.all([
+          fetchPopularMovies(),
+          fetchMovieGenres()
+        ]);
+        setMovies(moviesData);
+        setFilteredMovies(moviesData);
+        setGenres(genresData);
+      } catch (err) {
+        setError('Failed to fetch movies. Please try again later.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    let result = [...movies];
+    
+    // Filter by genre if selected
+    if (selectedGenre) {
+      result = result.filter(movie => 
+        movie.genre_ids.includes(selectedGenre)
+      );
+    }
+    
+    // Sort movies
+    result.sort((a, b) => {
+      if (sortBy === 'title') {
+        return sortOrder === 'asc' 
+          ? a.title.localeCompare(b.title) 
+          : b.title.localeCompare(a.title);
+      } else if (sortBy === 'release_date') {
+        return sortOrder === 'asc' 
+          ? new Date(a.release_date).getTime() - new Date(b.release_date).getTime() 
+          : new Date(b.release_date).getTime() - new Date(a.release_date).getTime();
+      } else {
+        // Default: sort by popularity
+        return sortOrder === 'asc' 
+          ? a.popularity - b.popularity 
+          : b.popularity - a.popularity;
+      }
+    });
+    
+    setFilteredMovies(result);
+  }, [movies, selectedGenre, sortOrder, sortBy]);
+
+  const handleGenreChange = (genreId: number | null) => {
+    setSelectedGenre(genreId);
+  };
+
+  const handleSortChange = (sortBy: 'popularity' | 'title' | 'release_date') => {
+    setSortBy(sortBy);
+  };
+
+  const handleOrderChange = (order: 'asc' | 'desc') => {
+    setSortOrder(order);
+  };
+
+  if (error) {
+    return <ErrorDisplay message={error} />;
+  }
+
+  return (
+    <>
+      <h1 className="text-4xl font-bold mb-8 text-center text-gray-800 dark:text-white">
+        Popular Movies
+      </h1>
+      
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <>
+          <div className="mb-8">
+            <CategorySelector 
+              genres={genres}
+              selectedGenre={selectedGenre}
+              onGenreChange={handleGenreChange}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            <FilterBar 
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
+              onOrderChange={handleOrderChange}
+            />
+          </div>
+          
+          <MovieList movies={filteredMovies} />
+        </>
+      )}
+    </>
   );
 }
