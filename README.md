@@ -2,17 +2,10 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+First, install all dependencies
+1. ``` npm i ```
+2. Setup .env with ``` NEXT_PUBLIC_TMDB_API_KEY ```
+3. In the end run ``` npm run dev ``` and then navigate to localhost:3000
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
